@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package notification;
+
+option go_package = "github.com/example/notification";
+
+// NotificationMessage represents different types of notifications
+message NotificationMessage {
+  string id = 1;
+  int64 timestamp = 2;
+  
+  // First level oneof - notification type
+  oneof delivery_channel {
+    EmailNotification email = 3;
+    SMSNotification sms = 4;
+    PushNotification push = 5;
+  }
+  
+  Priority priority = 6;
+}
+
+// EmailNotification contains email-specific fields
+message EmailNotification {
+  string recipient_email = 1;
+  string subject = 2;
+  
+  // Second level oneof - content type
+  oneof content {
+    string plain_text = 3;
+    string html = 4;
+    RichContent rich_content = 5;
+  }
+  
+  repeated string cc = 6;
+}
+
+// SMSNotification contains SMS-specific fields
+message SMSNotification {
+  string phone_number = 1;
+  
+  // Second level oneof - content type
+  oneof content {
+    string text = 2;
+    MediaContent media = 3;
+  }
+}
+
+// PushNotification contains push notification fields
+message PushNotification {
+  string device_token = 1;
+  
+  // Second level oneof - notification style
+  oneof style {
+    BasicNotification basic = 2;
+    AlertNotification alert = 3;
+  }
+}
+
+// BasicNotification for simple push notifications
+message BasicNotification {
+  string title = 1;
+  string body = 2;
+  
+  // Third level oneof - action type
+  oneof action {
+    string url = 3;
+    string app_route = 4;
+  }
+}
+
+// AlertNotification for more urgent push notifications
+message AlertNotification {
+  string title = 1;
+  string body = 2;
+  bool requires_interaction = 3;
+}
+
+// RichContent represents complex content
+message RichContent {
+  string html = 1;
+  repeated Attachment attachments = 2;
+}
+
+// MediaContent for SMS with media
+message MediaContent {
+  string text = 1;
+  bytes media_data = 2;
+  string media_type = 3;
+}
+
+// Attachment for email attachments
+message Attachment {
+  string filename = 1;
+  bytes data = 2;
+  string mime_type = 3;
+}
+
+// Priority enum for notification priority
+enum Priority {
+  NORMAL = 0;
+  HIGH = 1;
+  URGENT = 2;
+}
