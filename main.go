@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	notification "example.com/spec-gen/github.com/example/notification"
+	notification "example.com/spec-gen/example/notification"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -192,8 +192,10 @@ func createExampleScalarValue(fd protoreflect.FieldDescriptor) (protoreflect.Val
 		return protoreflect.ValueOfBytes([]byte(fmt.Sprintf("example_%s_bytes", fd.Name()))), nil
 	case protoreflect.EnumKind:
 		enumValues := fd.Enum().Values()
-		if enumValues.Len() > 0 {
-			return protoreflect.ValueOfEnum(enumValues.Get(0).Number()), nil
+		fmt.Printf("%v:%v\n", fd.Name(), enumValues.Len())
+		// proto does not serialize 0, so it must always be the error value!
+		if enumValues.Len() > 1 {
+			return protoreflect.ValueOfEnum(enumValues.Get(1).Number()), nil
 		}
 		return protoreflect.Value{}, fmt.Errorf("enum %s has no values", fd.Name())
 	default:

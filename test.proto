@@ -2,102 +2,192 @@ syntax = "proto3";
 
 package notification;
 
-option go_package = "github.com/example/notification";
+option go_package = "example/notification";
 
-// NotificationMessage represents different types of notifications
+// Enum definitions
+enum NotificationType {
+  TYPE_UNKNOWN = 0;
+  TYPE_EMAIL = 1;
+  TYPE_SMS = 2;
+  TYPE_PUSH = 3;
+  TYPE_WEBHOOK = 4;
+}
+
+enum Priority {
+  PRIORITY_UNKNOWN = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_MEDIUM = 2;
+  PRIORITY_HIGH = 3;
+  PRIORITY_URGENT = 4;
+}
+
+enum Status {
+  STATUS_UNKNOWN = 0;
+  STATUS_PENDING = 1;
+  STATUS_SENT = 2;
+  STATUS_DELIVERED = 3;
+  STATUS_FAILED = 4;
+}
+
+// Message definitions
 message NotificationMessage {
+  // Basic scalar fields
   string id = 1;
-  int64 timestamp = 2;
+  string title = 2;
+  string content = 3;
+  int64 timestamp = 4;
+  int32 retry_count = 5;
+  bool is_urgent = 6;
+  double cost = 7;
+  float rating = 8;
+  bytes signature = 9;
   
-  // First level oneof - notification type
-  oneof delivery_channel {
-    EmailNotification email = 3;
-    SMSNotification sms = 4;
-    PushNotification push = 5;
+  // Enum fields
+  NotificationType type = 10;
+  Priority priority = 11;
+  Status status = 12;
+  
+  // Nested message
+  Recipient recipient = 13;
+  
+  // Repeated fields
+  repeated string tags = 14;
+  repeated Attachment attachments = 15;
+  repeated int32 error_codes = 16;
+  
+  // Map fields
+  map<string, string> metadata = 17;
+  map<int32, MetricValue> metrics = 18;
+  map<string, Recipient> cc_recipients = 19;
+  
+  // Oneof fields
+  oneof destination {
+    EmailDestination email_dest = 20;
+    SmsDestination sms_dest = 21;
+    PushDestination push_dest = 22;
+    WebhookDestination webhook_dest = 23;
   }
   
-  Priority priority = 6;
-}
-
-// EmailNotification contains email-specific fields
-message EmailNotification {
-  string recipient_email = 1;
-  string subject = 2;
-  
-  // Second level oneof - content type
-  oneof content {
-    string plain_text = 3;
-    string html = 4;
-    RichContent rich_content = 5;
+  oneof schedule {
+    int64 send_at_timestamp = 24;
+    ScheduleConfig schedule_config = 25;
   }
   
-  repeated string cc = 6;
+  // Optional fields (proto3 style)
+  optional string external_id = 26;
+  optional bool test_mode = 27;
 }
 
-// SMSNotification contains SMS-specific fields
-message SMSNotification {
-  string phone_number = 1;
+message Recipient {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  int32 user_id = 4;
+  map<string, string> attributes = 5;
   
-  // Second level oneof - content type
-  oneof content {
-    string text = 2;
-    MediaContent media = 3;
-  }
-}
-
-// PushNotification contains push notification fields
-message PushNotification {
-  string device_token = 1;
-  
-  // Second level oneof - notification style
-  oneof style {
-    BasicNotification basic = 2;
-    AlertNotification alert = 3;
-  }
-}
-
-// BasicNotification for simple push notifications
-message BasicNotification {
-  string title = 1;
-  string body = 2;
-  
-  // Third level oneof - action type
-  oneof action {
-    string url = 3;
-    string app_route = 4;
+  oneof identifier {
+    string email_addr = 6;
+    string phone_number = 7;
+    string user_token = 8;
   }
 }
 
-// AlertNotification for more urgent push notifications
-message AlertNotification {
-  string title = 1;
-  string body = 2;
-  bool requires_interaction = 3;
-}
-
-// RichContent represents complex content
-message RichContent {
-  string html = 1;
-  repeated Attachment attachments = 2;
-}
-
-// MediaContent for SMS with media
-message MediaContent {
-  string text = 1;
-  bytes media_data = 2;
-  string media_type = 3;
-}
-
-// Attachment for email attachments
 message Attachment {
   string filename = 1;
-  bytes data = 2;
-  string mime_type = 3;
+  string content_type = 2;
+  bytes data = 3;
+  int64 size = 4;
+  string url = 5;
+  map<string, string> headers = 6;
 }
 
-// Priority enum for notification priority
-enum Priority {
-  NORMAL = 0;
-  HIGH = 1;
-  URGENT = 2;
+message MetricValue {
+  double value = 1;
+  string unit = 2;
+  int64 timestamp = 3;
+}
+
+// Destination message types for oneof
+message EmailDestination {
+  string email = 1;
+  string subject = 2;
+  string html_body = 3;
+  string text_body = 4;
+  repeated string cc = 5;
+  repeated string bcc = 6;
+  map<string, string> headers = 7;
+}
+
+message SmsDestination {
+  string phone_number = 1;
+  string message = 2;
+  string sender_id = 3;
+}
+
+message PushDestination {
+  string device_token = 1;
+  string title = 2;
+  string body = 3;
+  map<string, string> data = 4;
+  int32 badge = 5;
+  string sound = 6;
+  int64 ttl = 7;
+}
+
+message WebhookDestination {
+  string url = 1;
+  string method = 2;
+  map<string, string> headers = 3;
+  string payload = 4;
+  int32 timeout_seconds = 5;
+}
+
+message ScheduleConfig {
+  int64 start_time = 1;
+  int64 end_time = 2;
+  repeated DayOfWeek days_of_week = 3;
+  string timezone = 4;
+  int32 interval_minutes = 5;
+  
+  enum DayOfWeek {
+    DAY_UNKNOWN = 0;
+    MONDAY = 1;
+    TUESDAY = 2;
+    WEDNESDAY = 3;
+    THURSDAY = 4;
+    FRIDAY = 5;
+    SATURDAY = 6;
+    SUNDAY = 7;
+  }
+}
+
+// Additional complex message for testing nested structures
+message Campaign {
+  string id = 1;
+  string name = 2;
+  repeated NotificationMessage notifications = 3;
+  map<string, CampaignMetrics> metrics_by_type = 4;
+  
+  oneof targeting {
+    SegmentTargeting segment = 5;
+    IndividualTargeting individuals = 6;
+  }
+}
+
+message CampaignMetrics {
+  int64 sent_count = 1;
+  int64 delivered_count = 2;
+  int64 failed_count = 3;
+  double success_rate = 4;
+}
+
+message SegmentTargeting {
+  string segment_id = 1;
+  repeated string filters = 2;
+  int32 max_recipients = 3;
+}
+
+message IndividualTargeting {
+  repeated Recipient recipients = 1;
+  bool deduplicate = 2;
 }
