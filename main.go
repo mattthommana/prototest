@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	notification "example.com/spec-gen/example/notification"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -89,13 +89,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Convert to JSON
-	jsonBytes, err := json.MarshalIndent(msg, "", "  ")
+	// Use protojson instead of standard json marshaling
+	marshaler := protojson.MarshalOptions{
+		Multiline:       true,
+		Indent:          "  ",
+		AllowPartial:    true,
+		UseProtoNames:   false, // Use JSON field names (default)
+		UseEnumNumbers:  false, // Use enum string names
+		EmitUnpopulated: false, // Only emit set fields
+	}
+
+	jsonBytes, err := marshaler.Marshal(msg)
 	if err != nil {
 		fmt.Printf("Error marshaling to JSON: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("Example spec:\n%s\n\n", string(jsonBytes))
+
+	// Test roundtrip: JSON back to proto
+	testRoundtrip(jsonBytes)
+}
+
+func testRoundtrip(jsonBytes []byte) {
+	// Unmarshal JSON back to proto to verify it works
+	unmarshaler := protojson.UnmarshalOptions{
+		AllowPartial:   true,
+		DiscardUnknown: true,
+	}
+
+	testMsg := &notification.NotificationMessage{}
+	err := unmarshaler.Unmarshal(jsonBytes, testMsg)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to unmarshal JSON back to proto: %v\n", err)
+	} else {
+		fmt.Println("SUCCESS: JSON can be unmarshaled back to proto!")
+	}
 }
 
 // fillProtoWithExamples fills a proto message with example values
@@ -192,7 +220,7 @@ func createExampleScalarValue(fd protoreflect.FieldDescriptor) (protoreflect.Val
 		return protoreflect.ValueOfBytes([]byte(fmt.Sprintf("example_%s_bytes", fd.Name()))), nil
 	case protoreflect.EnumKind:
 		enumValues := fd.Enum().Values()
-		fmt.Printf("%v:%v\n", fd.Name(), enumValues.Len())
+		// fmt.Printf("%v:%v\n", fd.Name(), enumValues.Len())
 		// proto does not serialize 0, so it must always be the error value!
 		if enumValues.Len() > 1 {
 			return protoreflect.ValueOfEnum(enumValues.Get(1).Number()), nil
